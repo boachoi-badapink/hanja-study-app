@@ -1,0 +1,85 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink: #1a1209;
+  --ink-2: #3d3020;
+  --ink-3: #7a6a50;
+  --stone: #b5a48a;
+  --parchment: #f5f0e8;
+  --parchment-2: #ede7d9;
+  --parchment-3: #e3dbc8;
+  --red: #c0392b;
+  --red-light: #fdf0ee;
+  --gold: #c8a84b;
+  --gold-light: #fdf7e8;
+  --green: #2d6a4f;
+  --green-light: #eaf4ef;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(26,18,9,0.08);
+  --shadow-lg: 0 8px 32px rgba(26,18,9,0.12);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--parchment);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { height: 100%; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.18s ease;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  outline: none;
+  border: 1.5px solid var(--parchment-3);
+  background: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  transition: border-color 0.18s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--gold);
+}
+
+/* 한자 글꼴 */
+.hanja-char {
+  font-family: 'Noto Serif KR', serif;
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--parchment-2); }
+::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 3px; }
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes flipIn {
+  from { opacity: 0; transform: rotateY(90deg); }
+  to { opacity: 1; transform: rotateY(0deg); }
+}
+
+.fade-in { animation: fadeIn 0.3s ease forwards; }
+.slide-in { animation: slideIn 0.25s ease forwards; }
