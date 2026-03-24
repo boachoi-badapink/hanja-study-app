@@ -1,15 +1,15 @@
 // src/pages/AdminPage.jsx
 import React, { useState, useEffect, useRef } from 'react'
-import { getDocs, collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
+import { getDocs, collection, query, orderBy, doc, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { addHanja, addHanjaBatch, updateHanja, deleteHanja, getCategories } from '../hooks/useHanja.js'
-import { Plus, Upload, Trash2, Edit2, Check, X, FileText, Table } from 'lucide-react'
+import { Plus, Upload, Trash2, Edit2, Check, X, RefreshCw } from 'lucide-react'
 
 export default function AdminPage() {
   const [list, setList] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('list') // list | add | upload
+  const [tab, setTab] = useState('list')
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ char:'', meaning:'', reading:'', category:'' })
   const [uploadStatus, setUploadStatus] = useState('')
@@ -46,13 +46,28 @@ export default function AdminPage() {
     await load()
   }
 
-  // CSV 업로드 파싱 (한자,뜻,음,분류)
+  // ── 넘버링 재정렬 ──────────────────────────────────────────────
+  const handleRenumber = async () => {
+    if (!window.confirm(`전체 ${list.length}개 한자 번호를 1번부터 다시 정렬할까요?`)) return
+    setLoading(true)
+    const snap = await getDocs(query(collection(db, 'hanja'), orderBy('id')))
+    const batch = writeBatch(db)
+    snap.docs.forEach((d, i) => {
+      batch.update(doc(db, 'hanja', d.id), { id: i + 1 })
+    })
+    await batch.commit()
+    await load()
+    alert('넘버링 재정렬 완료!')
+  }
+
   const handleCSV = async (text) => {
     const lines = text.split('\n').filter(l => l.trim())
     const items = []
     for (const line of lines) {
       const parts = line.split(',').map(s => s.trim())
       if (parts.length < 3) continue
+      // 헤더 줄 건너뛰기
+      if (parts[0] === '한자' || parts[0] === 'char') continue
       items.push({ char: parts[0], meaning: parts[1], reading: parts[2], category: parts[3] || '' })
     }
     if (items.length === 0) return setUploadStatus('❌ 파싱 가능한 데이터가 없습니다')
@@ -62,7 +77,6 @@ export default function AdminPage() {
     setUploadStatus(`✅ ${items.length}개 등록 완료!`)
   }
 
-  // PDF 텍스트 추출 후 파싱
   const handlePDF = async (file) => {
     setUploadStatus('📄 PDF 읽는 중...')
     try {
@@ -76,7 +90,7 @@ export default function AdminPage() {
         const content = await page.getTextContent()
         fullText += content.items.map(item => item.str).join(' ') + '\n'
       }
-      setUploadStatus(`📄 텍스트 추출 완료. 아래에서 확인 후 CSV 형식으로 변환하여 업로드하세요.\n\n추출된 텍스트:\n${fullText.substring(0, 500)}...`)
+      setUploadStatus(`📄 텍스트 추출 완료. CSV 형식으로 변환 후 업로드하세요.\n\n추출 텍스트 (앞부분):\n${fullText.substring(0, 500)}...`)
     } catch (e) {
       setUploadStatus('❌ PDF 파싱 실패: ' + e.message)
     }
@@ -126,11 +140,17 @@ export default function AdminPage() {
               <input placeholder="한자/뜻/음 검색..." value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 style={{ flex:1 }}/>
-              <select onChange={e => setSearchTerm(e.target.value)}
-                style={{ fontSize:13 }}>
+              <select onChange={e => setSearchTerm(e.target.value)} style={{ fontSize:13 }}>
                 <option value="">전체 분류</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              {/* 넘버링 재정렬 버튼 */}
+              <button onClick={handleRenumber}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8,
+                  background:'var(--gold-light)', color:'var(--gold)', border:'1px solid var(--gold)',
+                  fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                <RefreshCw size={14}/> 번호 재정렬
+              </button>
             </div>
 
             {loading ? (
@@ -165,11 +185,9 @@ export default function AdminPage() {
                 <div key={key} style={{ marginBottom:16 }}>
                   <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--ink-2)', marginBottom:6 }}>{label}</label>
                   {large ? (
-                    <div style={{ textAlign:'center' }}>
-                      <input value={form[key]} onChange={e => setForm(f=>({...f,[key]:e.target.value}))}
-                        placeholder={placeholder}
-                        style={{ width:'100%', fontSize:48, textAlign:'center', fontFamily:'Noto Serif KR', padding:'12px', height:90 }}/>
-                    </div>
+                    <input value={form[key]} onChange={e => setForm(f=>({...f,[key]:e.target.value}))}
+                      placeholder={placeholder}
+                      style={{ width:'100%', fontSize:48, textAlign:'center', fontFamily:'Noto Serif KR', padding:'12px', height:90 }}/>
                   ) : (
                     <input value={form[key]} onChange={e => setForm(f=>({...f,[key]:e.target.value}))}
                       placeholder={placeholder} style={{ width:'100%' }}/>
@@ -190,30 +208,21 @@ export default function AdminPage() {
           <div style={{ maxWidth:600, margin:'0 auto' }}>
             <div style={{ background:'white', borderRadius:16, padding:28, boxShadow:'var(--shadow)', marginBottom:20 }}>
               <h3 style={{ fontFamily:'Noto Serif KR', fontSize:20, marginBottom:8, color:'var(--ink)' }}>일괄 업로드</h3>
-
-              {/* CSV 안내 */}
               <div style={{ background:'var(--parchment-2)', borderRadius:12, padding:16, marginBottom:20, fontSize:13 }}>
                 <div style={{ fontWeight:600, marginBottom:8, color:'var(--ink)' }}>📋 CSV 파일 형식</div>
                 <div style={{ fontFamily:'monospace', color:'var(--ink-3)', lineHeight:1.8 }}>
                   한자,뜻,음,분류<br/>
                   山,산,산,자연<br/>
-                  水,물,수,자연<br/>
-                  火,불,화,자연
+                  水,물,수,자연
                 </div>
-                <div style={{ color:'var(--ink-3)', marginTop:8 }}>• 첫 줄이 헤더(한자,뜻,음,분류)인 경우 자동으로 건너뜁니다<br/>• 분류는 비워도 됩니다</div>
+                <div style={{ color:'var(--ink-3)', marginTop:8 }}>• 첫 줄 헤더는 자동으로 건너뜁니다<br/>• 분류는 비워도 됩니다</div>
               </div>
-
-              {/* 업로드 버튼 */}
               <input type="file" accept=".csv,.txt,.pdf" ref={fileRef} onChange={handleFile} style={{ display:'none' }}/>
-              <div style={{ display:'flex', gap:12 }}>
-                <button onClick={() => fileRef.current.click()}
-                  style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                    padding:14, borderRadius:12, background:'var(--ink)', color:'white', fontWeight:600, fontSize:15, cursor:'pointer' }}>
-                  <Upload size={18}/> CSV / PDF 파일 선택
-                </button>
-              </div>
-
-              {/* 업로드 상태 */}
+              <button onClick={() => fileRef.current.click()}
+                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  padding:14, borderRadius:12, background:'var(--ink)', color:'white', fontWeight:600, fontSize:15, cursor:'pointer' }}>
+                <Upload size={18}/> CSV / PDF 파일 선택
+              </button>
               {uploadStatus && (
                 <div style={{ marginTop:16, padding:16, borderRadius:12, background:'var(--parchment-2)',
                   fontSize:13, color:'var(--ink-2)', whiteSpace:'pre-wrap', fontFamily:'monospace', maxHeight:200, overflow:'auto' }}>
@@ -221,8 +230,6 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-
-            {/* 직접 입력 업로드 */}
             <div style={{ background:'white', borderRadius:16, padding:28, boxShadow:'var(--shadow)' }}>
               <h3 style={{ fontSize:16, fontWeight:600, marginBottom:12, color:'var(--ink)' }}>텍스트 직접 붙여넣기</h3>
               <PasteUpload onUpload={handleCSV}/>
@@ -234,15 +241,13 @@ export default function AdminPage() {
   )
 }
 
-// ── 행 컴포넌트 ──────────────────────────────────────────────────
-function HanjaRow({ item, editId, onEdit, onCancel, onSave, onDelete, categories }) {
+function HanjaRow({ item, editId, onEdit, onCancel, onSave, onDelete }) {
   const [editable, setEditable] = useState({ ...item })
   const isEditing = editId === item.docId
 
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, background:'white', borderRadius:10, padding:'10px 16px', boxShadow:'var(--shadow)' }}>
       <span style={{ fontSize:11, color:'var(--stone)', minWidth:36 }}>#{item.id}</span>
-
       {isEditing ? (
         <>
           <input value={editable.char} onChange={e => setEditable(p=>({...p,char:e.target.value}))}
@@ -286,7 +291,6 @@ function HanjaRow({ item, editId, onEdit, onCancel, onSave, onDelete, categories
   )
 }
 
-// ── 붙여넣기 업로드 ──────────────────────────────────────────────
 function PasteUpload({ onUpload }) {
   const [text, setText] = useState('')
   return (
