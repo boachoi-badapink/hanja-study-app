@@ -29,7 +29,7 @@ export default function StudyPage() {
   const [cardIndex, setCardIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
 
-  const { list, loading } = useHanjaList(categoryFilter || null)
+  const { list, loading } = useHanjaList()
 
   useEffect(() => {
     getCategories().then(setCategories)
@@ -37,6 +37,8 @@ export default function StudyPage() {
   }, [])
 
   const filtered = list.filter(h => {
+    const matchCat = !categoryFilter || (h.category || '').trim() === categoryFilter.trim()
+    if (!matchCat) return false
     if (activeTab === 'memorized') return progress[h.id]?.memorized
     if (activeTab === 'notMemorized') return !progress[h.id]?.memorized
     return true
@@ -163,11 +165,26 @@ export default function StudyPage() {
   )
 }
 
+// ── 급수 뱃지 색상 ─────────────────────────────────────────────
+function gradeColor(cat) {
+  if (!cat) return { bg:"var(--gold-light)", color:"var(--gold)" }
+  if (cat.includes("1급")) return { bg:"#fff0f0", color:"#c0392b" }
+  if (cat.includes("2급")) return { bg:"#fff4e6", color:"#c8622a" }
+  if (cat.includes("3급")) return { bg:"#fffbe6", color:"#c8a84b" }
+  if (cat.includes("4급")) return { bg:"#f0fff4", color:"#2d6a4f" }
+  if (cat.includes("5급")) return { bg:"#e8f4fd", color:"#1a6a9a" }
+  if (cat.includes("6급")) return { bg:"#f0ecff", color:"#6c5ce7" }
+  if (cat.includes("7급")) return { bg:"#fce8f3", color:"#a0522d" }
+  if (cat.includes("8급")) return { bg:"#e8f8f8", color:"#2c8c7a" }
+  return { bg:"var(--gold-light)", color:"var(--gold)" }
+}
+
 // ── 카드 뷰 ────────────────────────────────────────────────────
 function CardView({ hanja, index, total, progress, onToggleMemorized, onPrev, onNext, autoShowMeaning, revealed, setRevealed }) {
   if (!hanja) return null
   const memorized = progress[hanja.id]?.memorized
   const showContent = autoShowMeaning || revealed
+  const gc = gradeColor(hanja.category)
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, maxWidth:500, margin:'0 auto' }}>
@@ -194,7 +211,7 @@ function CardView({ hanja, index, total, progress, onToggleMemorized, onPrev, on
         <div style={{ position:'absolute', top:14, left:16, display:'flex', gap:6, alignItems:'center' }}>
           <span style={{ fontSize:11, color:'var(--ink-3)', fontWeight:500 }}>#{hanja.id}</span>
           {hanja.category && (
-            <span style={{ fontSize:10, background:'var(--gold-light)', color:'var(--gold)', padding:'2px 7px', borderRadius:20, fontWeight:500 }}>
+            <span style={{ fontSize:10, background:gc.bg, color:gc.color, padding:'2px 7px', borderRadius:20, fontWeight:600 }}>
               {hanja.category}
             </span>
           )}
