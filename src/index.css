@@ -21,15 +21,24 @@
 
 html, body {
   height: 100%;
+  height: 100dvh;
   font-family: 'Noto Sans KR', sans-serif;
   background: var(--parchment);
   color: var(--ink);
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  /* 모바일 주소창 고려 */
+  position: fixed;
+  width: 100%;
 }
 
-#root { height: 100%; }
+#root {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
 
 button {
   font-family: inherit;
@@ -37,6 +46,9 @@ button {
   border: none;
   outline: none;
   transition: all 0.18s ease;
+  /* 모바일 터치 최적화 */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 input, select, textarea {
@@ -49,37 +61,35 @@ input, select, textarea {
   font-size: 14px;
   color: var(--ink);
   transition: border-color 0.18s;
+  -webkit-appearance: none;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--gold);
 }
 
-/* 한자 글꼴 */
 .hanja-char {
   font-family: 'Noto Serif KR', serif;
 }
 
 /* 스크롤바 */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--parchment-2); }
-::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 3px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 2px; }
 
-/* 애니메이션 */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(-12px); }
+  from { opacity: 0; transform: translateX(-10px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes flipIn {
-  from { opacity: 0; transform: rotateY(90deg); }
-  to { opacity: 1; transform: rotateY(0deg); }
-}
-
 .fade-in { animation: fadeIn 0.3s ease forwards; }
-.slide-in { animation: slideIn 0.25s ease forwards; }
+
+/* 모바일 */
+@media (max-width: 480px) {
+  body { font-size: 14px; }
+}
